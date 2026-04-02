@@ -17,9 +17,9 @@
     "baseUrl": "./",
     "paths": {
       "@payload-config": ["./payload.config.ts"],
-      "payload-syncer": ["../src/index.ts"],
-      "payload-syncer/client": ["../src/exports/client.ts"],
-      "payload-syncer/rsc": ["../src/exports/rsc.ts"],
+      "@ace-ams/payload-syncer": ["../src/index.ts"],
+      "@ace-ams/payload-syncer/client": ["../src/exports/client.ts"],
+      "@ace-ams/payload-syncer/rsc": ["../src/exports/rsc.ts"],
     },
     "noEmit": true,
     "emitDeclarationOnly": false,

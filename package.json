@@ -1,7 +1,7 @@
 {
-  "name": "payload-syncer",
+  "name": "@ace-ams/payload-syncer",
   "version": "1.0.0",
-  "description": "A blank template to get started with Payload 3.0",
+  "description": "A Payload CMS plugin to sync database content and S3 media across environments",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -28,6 +28,7 @@
   ],
   "scripts": {
     "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
+    "prepublishOnly": "pnpm clean && pnpm build",
     "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
     "build:types": "tsc --outDir dist --rootDir ./src",
     "clean": "rimraf {dist,*.tsbuildinfo}",
@@ -87,6 +88,7 @@
     "pnpm": "^9 || ^10"
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "import": "./dist/index.js",

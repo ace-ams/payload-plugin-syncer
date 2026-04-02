@@ -9,7 +9,7 @@ A sync button will appear in the admin dashboard for users that pass the admin r
 ## Installation
 
 ```sh
-pnpm add payload-syncer
+pnpm add @ace-ams/payload-syncer
 ```
 
 ---
@@ -19,7 +19,7 @@ pnpm add payload-syncer
 Add the plugin to your `payload.config.ts`:
 
 ```ts
-import { enviromentSyncing } from 'payload-syncer'
+import { enviromentSyncing } from '@ace-ams/payload-syncer'
 
 export default buildConfig({
   plugins: [

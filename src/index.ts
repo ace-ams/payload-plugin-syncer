@@ -27,7 +27,7 @@ export const enviromentSyncing =
         appEnviroment: pluginOptions.currentEnv,
         enviromentLabels: pluginOptions.enviromentLabels,
       },
-      path: 'payload-syncer/client#SyncButton',
+      path: '@ace-ams/payload-syncer/client#SyncButton',
     })
 
     if (!config.endpoints) {
