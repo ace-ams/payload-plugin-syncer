@@ -37,6 +37,22 @@ const buildConfigWithMemoryDB = async () => {
     },
     collections: [
       {
+        slug: 'users',
+        auth: true,
+        fields: [
+          {
+            name: 'role',
+            type: 'select',
+            defaultValue: 'user',
+            options: [
+              { label: 'Admin', value: 'admin' },
+              { label: 'User', value: 'user' },
+            ],
+            required: true,
+          },
+        ],
+      },
+      {
         slug: 'posts',
         fields: [],
       },
