@@ -10,7 +10,26 @@ export type S3Config = {
   secretAccessKey: string
 }
 
+export type AdminRole = {
+  /**
+   * The field name on the user document that holds the role.
+   * @default 'role'
+   */
+  field: string
+  /**
+   * The value that grants admin access.
+   * @default 'admin'
+   */
+  value: string
+}
+
 export type EnviromentSyncingConfig = {
+  /**
+   * Configure which field and value identifies an admin user.
+   * Defaults to `{ field: 'role', value: 'admin' }`.
+   */
+  adminRole?: AdminRole
+
   /**
    * The current deployment environment.
    * Explicitly set this when your deployment environment differs from NODE_ENV.
@@ -21,8 +40,7 @@ export type EnviromentSyncingConfig = {
   currentEnv?: Enviroments
 
   /**
-   * URLs for the database connections per environment.
-   * Required for database syncing to work.
+   * MongoDB connection strings per environment. Required for syncing to work.
    *
    * @example
    * {
@@ -31,15 +49,16 @@ export type EnviromentSyncingConfig = {
    *   production: process.env.DATABASE_URL_PROD,
    * }
    */
-  databaseUrls?: Record<Enviroments, string>
+  databaseUrls: Record<Enviroments, string>
 
   /**
-   * Disable the plugin entirely.
+   * Disable the plugin without uninstalling it.
    */
   disabled?: boolean
 
   /**
-   * Custom display labels for each environment, shown in the sync button UI.
+   * Display labels for each environment shown in the sync button UI.
+   * Defaults to DEV / ACC / PROD.
    *
    * @example { development: 'DEV', acceptance: 'ACC', production: 'PROD' }
    */
@@ -52,6 +71,13 @@ export type EnviromentSyncingConfig = {
    * @example ['users', 'admins']
    */
   exceptCollections?: CollectionSlug[]
+
+  /**
+   * The slug of the upload collection used for media.
+   * Used to update the prefix field on media documents after a sync.
+   * @default 'media'
+   */
+  mediaCollection?: string
 
   /**
    * S3 configuration for media syncing.

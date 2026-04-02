@@ -5,6 +5,8 @@ import { MongoClient } from 'mongodb'
 
 import type { Enviroments, EnviromentSyncingConfig } from '../types.js'
 
+type SyncLogger = PayloadRequest['payload']['logger']
+
 const ENABLED_ENVS: Enviroments[] = ['acceptance', 'development']
 
 export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
@@ -13,8 +15,11 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
       return Response.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
+    const { field: adminField = 'role', value: adminValue = 'admin' } =
+      pluginOptions.adminRole ?? {}
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((req.user as any).role !== 'admin') {
+    if ((req.user as any)[adminField] !== adminValue) {
       return Response.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
@@ -44,14 +49,8 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
       return Response.json({ message: 'Invalid sourceEnv' }, { status: 400 })
     }
 
-    const { databaseUrls } = pluginOptions
-
-    if (!databaseUrls) {
-      return Response.json({ message: 'No database URLs configured' }, { status: 500 })
-    }
-
-    const connectionStringSource = databaseUrls[sourceEnv]
-    const connectionStringTarget = databaseUrls[env]
+    const connectionStringSource = pluginOptions.databaseUrls[sourceEnv]
+    const connectionStringTarget = pluginOptions.databaseUrls[env]
 
     if (!connectionStringSource) {
       return Response.json({ message: 'No connection string for sourceEnv' }, { status: 500 })
@@ -62,12 +61,15 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
     }
 
     const exceptCollections = pluginOptions.exceptCollections ?? []
+    const mediaCollection = pluginOptions.mediaCollection ?? 'media'
+    const logger = req.payload.logger
 
-    await copyDatabase(connectionStringSource, connectionStringTarget, exceptCollections)
+    await copyDatabase(connectionStringSource, connectionStringTarget, exceptCollections, logger)
+
     const { s3 } = pluginOptions
     if (s3?.bucket && s3?.accessKeyId && s3?.secretAccessKey) {
-      await copyMedia(sourceEnv, env, pluginOptions)
-      await refactorMedia(connectionStringTarget, env)
+      await copyMedia(sourceEnv, env, pluginOptions, logger)
+      await refactorMedia(connectionStringTarget, env, mediaCollection, logger)
     }
 
     return Response.json({ message: 'Sync successful', success: true })
@@ -82,6 +84,7 @@ async function copyDatabase(
   connectionStringSource: string,
   connectionStringTarget: string,
   exceptCollections: string[],
+  logger: SyncLogger,
 ): Promise<void> {
   const sourceConnection = new MongoClient(connectionStringSource)
   const targetConnection = new MongoClient(connectionStringTarget)
@@ -115,84 +118,87 @@ async function copyDatabase(
 
   await sourceConnection.close()
   await targetConnection.close()
-  // eslint-disable-next-line no-console
-  console.log('[SYNC] Synced all collections')
+  logger.info('[SYNC] Synced all collections')
 }
 
 /**
  * Copy media objects in S3 from one environment prefix to another.
- * S3 credentials and bucket are taken from the plugin options.
+ * Uses listObjectsV2 with pagination to handle buckets with more than 1000 objects.
  */
 async function copyMedia(
   from: Enviroments,
   to: Enviroments,
   pluginOptions: EnviromentSyncingConfig,
+  logger: SyncLogger,
 ): Promise<void> {
   const { s3 } = pluginOptions
-
   if (!s3) {
-    return Promise.reject(new Error('S3 not configured in plugin options'))
+    return
   }
 
   const { accessKeyId, bucket, endpoint, region, secretAccessKey } = s3
 
-  const clientConfig: AWS.S3ClientConfig = {
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
+  const client = new AWS.S3({
+    credentials: { accessKeyId, secretAccessKey },
     endpoint,
     region,
-  }
+  })
 
   const fromPrefix = from === 'acceptance' ? 'acceptance' : 'production'
   const toPrefix = to === 'acceptance' ? 'acceptance' : 'development'
 
-  const client = new AWS.S3(clientConfig)
-  const data = await client.listObjects({ Bucket: bucket, Prefix: fromPrefix })
+  let continuationToken: string | undefined
+  let totalCopied = 0
 
-  if (!data.Contents?.length) {
-    return Promise.reject(new Error('No objects found in source bucket'))
-  }
+  do {
+    const data = await client.listObjectsV2({
+      Bucket: bucket,
+      ContinuationToken: continuationToken,
+      Prefix: fromPrefix,
+    })
 
-  // eslint-disable-next-line no-console
-  console.log('[SYNC] Found', data.Contents.length, 'objects in source bucket')
+    for (const item of data.Contents ?? []) {
+      if (!item.Key) {
+        continue
+      }
 
-  for (const item of data.Contents) {
-    if (!item.Key) {
-      continue
+      const key = item.Key.replace(`${fromPrefix}/`, '')
+      const toPath = `${toPrefix}/${key}`
+
+      await client
+        .copyObject({
+          Bucket: bucket,
+          CopySource: encodeURI(`${bucket}/${item.Key}`),
+          Key: toPath,
+        })
+        .catch((err: unknown) => {
+          logger.error({ err }, `[SYNC] Failed to copy object: ${key}`)
+        })
+
+      totalCopied++
     }
 
-    const key = item.Key.replace(fromPrefix + '/', '')
-    const fromPath = item.Key
-    const toPath = `${toPrefix}/${key}`
+    continuationToken = data.NextContinuationToken
+  } while (continuationToken)
 
-    await client
-      .copyObject({
-        Bucket: bucket,
-        CopySource: encodeURI(`${bucket}/${fromPath}`),
-        Key: toPath,
-      })
-      .catch((err: unknown) => {
-        // eslint-disable-next-line no-console
-        console.log('[SYNC] copy error', key, err)
-      })
-  }
-
-  // eslint-disable-next-line no-console
-  console.log('[SYNC] Copied', data.Contents.length, 'objects from source bucket')
+  logger.info(`[SYNC] Copied ${totalCopied} objects from source bucket`)
 }
 
 /**
  * Update the prefix field on all media documents in the target database
  * to match the target environment prefix.
  */
-async function refactorMedia(connectionString: string, toPrefix: Enviroments): Promise<void> {
+async function refactorMedia(
+  connectionString: string,
+  toPrefix: Enviroments,
+  mediaCollection: string,
+  logger: SyncLogger,
+): Promise<void> {
   const connection = new MongoClient(connectionString)
   await connection.connect()
 
   const db = connection.db()
-  const collection = db.collection('media')
+  const collection = db.collection(mediaCollection)
   const media = collection.find({})
 
   while (await media.hasNext()) {
@@ -204,6 +210,5 @@ async function refactorMedia(connectionString: string, toPrefix: Enviroments): P
   }
 
   await connection.close()
-  // eslint-disable-next-line no-console
-  console.log('[SYNC] Refactored media prefixes')
+  logger.info(`[SYNC] Refactored media prefixes in "${mediaCollection}"`)
 }

@@ -2,7 +2,7 @@ import type { Config } from 'payload'
 
 import { createSyncHandler } from './endpoints/sync.js'
 
-export type { Enviroments, EnviromentSyncingConfig, S3Config } from './types.js'
+export type { AdminRole, Enviroments, EnviromentSyncingConfig, S3Config } from './types.js'
 import type { EnviromentSyncingConfig } from './types.js'
 
 export const enviromentSyncing =
@@ -21,9 +21,14 @@ export const enviromentSyncing =
     if (!config.admin.components.actions) {
       config.admin.components.actions = []
     }
-    config.admin.components.actions.push(`enviroment-syncing/client#SyncButton`)
-
-    // ---- ENDPOINT ----
+    config.admin.components.actions.push({
+      clientProps: {
+        adminRole: pluginOptions.adminRole,
+        appEnviroment: pluginOptions.currentEnv,
+        enviromentLabels: pluginOptions.enviromentLabels,
+      },
+      path: 'enviroment-syncing/client#SyncButton',
+    })
 
     if (!config.endpoints) {
       config.endpoints = []
