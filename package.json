@@ -115,5 +115,8 @@
     ]
   },
   "registry": "https://registry.npmjs.org/",
-  "dependencies": {}
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1022.0",
+    "mongodb": "^7.1.1"
+  }
 }

@@ -1,9 +1,9 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { enviromentSyncing } from 'enviroment-syncing'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import path from 'path'
 import { buildConfig } from 'payload'
-import { enviromentSyncing } from 'enviroment-syncing'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
@@ -75,8 +75,19 @@ const buildConfigWithMemoryDB = async () => {
     },
     plugins: [
       enviromentSyncing({
-        collections: {
-          posts: true,
+        currentEnv: process.env.APP_ENV as 'acceptance' | 'development' | 'production',
+        databaseUrls: {
+          acceptance: process.env.DATABASE_URL_ACC!,
+          development: process.env.DATABASE_URL!,
+          production: process.env.DATABASE_URL_PROD!,
+        },
+        exceptCollections: ['users'],
+        s3: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+          bucket: process.env.S3_BUCKET!,
+          endpoint: process.env.S3_ENDPOINT,
+          region: process.env.S3_REGION,
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
         },
       }),
     ],

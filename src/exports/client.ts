@@ -1,1 +1,2 @@
-export { BeforeDashboardClient } from '../components/BeforeDashboardClient.js'
+export { SyncButton } from '../components/SyncButton.js'
+;``
