@@ -11,25 +11,17 @@
     "../src/**/*.ts",
     "../src/**/*.tsx",
     "next.config.mjs",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
   ],
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@payload-config": [
-        "./payload.config.ts"
-      ],
-      "enviroment-syncing": [
-        "../src/index.ts"
-      ],
-      "enviroment-syncing/client": [
-        "../src/exports/client.ts"
-      ],
-      "enviroment-syncing/rsc": [
-        "../src/exports/rsc.ts"
-      ]
+      "@payload-config": ["./payload.config.ts"],
+      "payload-syncer": ["../src/index.ts"],
+      "payload-syncer/client": ["../src/exports/client.ts"],
+      "payload-syncer/rsc": ["../src/exports/rsc.ts"],
     },
     "noEmit": true,
     "emitDeclarationOnly": false,
-  }
+  },
 }

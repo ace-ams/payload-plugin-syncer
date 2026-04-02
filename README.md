@@ -1,4 +1,4 @@
-# Environment Syncing
+# Payload Syncer
 
 A Payload CMS plugin that lets admins sync database content and S3 media from one environment (production or acceptance) down to a lower environment.
 
@@ -9,7 +9,7 @@ A sync button will appear in the admin dashboard for users that pass the admin r
 ## Installation
 
 ```sh
-pnpm add enviroment-syncing
+pnpm add payload-syncer
 ```
 
 ---
@@ -19,7 +19,7 @@ pnpm add enviroment-syncing
 Add the plugin to your `payload.config.ts`:
 
 ```ts
-import { enviromentSyncing } from 'enviroment-syncing'
+import { enviromentSyncing } from 'payload-syncer'
 
 export default buildConfig({
   plugins: [

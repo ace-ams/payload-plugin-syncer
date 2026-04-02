@@ -27,7 +27,7 @@ export const enviromentSyncing =
         appEnviroment: pluginOptions.currentEnv,
         enviromentLabels: pluginOptions.enviromentLabels,
       },
-      path: 'enviroment-syncing/client#SyncButton',
+      path: 'payload-syncer/client#SyncButton',
     })
 
     if (!config.endpoints) {
