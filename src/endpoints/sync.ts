@@ -64,7 +64,8 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
     const exceptCollections = pluginOptions.exceptCollections ?? []
 
     await copyDatabase(connectionStringSource, connectionStringTarget, exceptCollections)
-    if (pluginOptions.s3) {
+    const { s3 } = pluginOptions
+    if (s3?.bucket && s3?.accessKeyId && s3?.secretAccessKey) {
       await copyMedia(sourceEnv, env, pluginOptions)
       await refactorMedia(connectionStringTarget, env)
     }
