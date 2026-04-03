@@ -8,6 +8,9 @@ import type { Enviroments, EnviromentSyncingConfig } from '../types.js'
 type SyncLogger = PayloadRequest['payload']['logger']
 
 const ENABLED_ENVS: Enviroments[] = ['acceptance', 'development']
+const BATCH_SIZE = 500
+
+let syncInProgress = false
 
 export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
   return async function syncHandler(req: PayloadRequest): Promise<Response> {
@@ -15,12 +18,22 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
       return Response.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const { field: adminField = 'role', value: adminValue = 'admin' } =
-      pluginOptions.adminRole ?? {}
+    if (pluginOptions.access) {
+      const allowed = await pluginOptions.access(req)
+      if (!allowed) {
+        return Response.json({ message: 'Unauthorized' }, { status: 401 })
+      }
+    } else {
+      const { field: adminField = 'role', value: adminValue = 'admin' } =
+        pluginOptions.adminRole ?? {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((req.user as any)[adminField] !== adminValue) {
+        return Response.json({ message: 'Unauthorized' }, { status: 401 })
+      }
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((req.user as any)[adminField] !== adminValue) {
-      return Response.json({ message: 'Unauthorized' }, { status: 401 })
+    if (syncInProgress) {
+      return Response.json({ message: 'A sync is already in progress' }, { status: 409 })
     }
 
     if (!req.json) {
@@ -49,6 +62,13 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
       return Response.json({ message: 'Invalid sourceEnv' }, { status: 400 })
     }
 
+    if (sourceEnv === env) {
+      return Response.json(
+        { message: 'sourceEnv and targetEnv cannot be the same' },
+        { status: 400 },
+      )
+    }
+
     const connectionStringSource = pluginOptions.databaseUrls[sourceEnv]
     const connectionStringTarget = pluginOptions.databaseUrls[env]
 
@@ -60,25 +80,32 @@ export function createSyncHandler(pluginOptions: EnviromentSyncingConfig) {
       return Response.json({ message: 'No connection string for targetEnv' }, { status: 500 })
     }
 
-    const exceptCollections = pluginOptions.exceptCollections ?? []
-    const mediaCollection = pluginOptions.mediaCollection ?? 'media'
-    const logger = req.payload.logger
+    syncInProgress = true
+    try {
+      const exceptCollections = pluginOptions.exceptCollections ?? []
+      const mediaCollection = pluginOptions.mediaCollection ?? 'media'
+      const logger = req.payload.logger
 
-    await copyDatabase(connectionStringSource, connectionStringTarget, exceptCollections, logger)
+      await copyDatabase(connectionStringSource, connectionStringTarget, exceptCollections, logger)
 
-    const { s3 } = pluginOptions
-    if (s3?.bucket && s3?.accessKeyId && s3?.secretAccessKey) {
-      await copyMedia(sourceEnv, env, pluginOptions, logger)
-      await refactorMedia(connectionStringTarget, env, mediaCollection, logger)
+      const { s3 } = pluginOptions
+      if (s3?.bucket && s3?.accessKeyId && s3?.secretAccessKey) {
+        await copyMedia(sourceEnv, env, pluginOptions, logger)
+        await refactorMedia(connectionStringTarget, env, mediaCollection, logger)
+      }
+
+      return Response.json({ message: 'Sync successful', success: true })
+    } finally {
+      syncInProgress = false
     }
-
-    return Response.json({ message: 'Sync successful', success: true })
   }
 }
 
 /**
  * Copy all collections from the source database to the target database.
  * Collections listed in exceptCollections and internal payload-* collections are skipped.
+ * Documents are read via a cursor and inserted in batches to avoid loading entire
+ * collections into memory at once.
  */
 async function copyDatabase(
   connectionStringSource: string,
@@ -108,11 +135,21 @@ async function copyDatabase(
     const sourceCollection = sourceDb.collection(collection.name)
     const targetCollection = targetDb.collection(collection.name)
 
-    const documents = await sourceCollection.find().toArray()
-
     await targetCollection.deleteMany({})
-    if (documents.length > 0) {
-      await targetCollection.insertMany(documents, { ordered: false })
+
+    const cursor = sourceCollection.find()
+    let batch: Record<string, unknown>[] = []
+
+    for await (const doc of cursor) {
+      batch.push(doc as Record<string, unknown>)
+      if (batch.length >= BATCH_SIZE) {
+        await targetCollection.insertMany(batch, { ordered: false })
+        batch = []
+      }
+    }
+
+    if (batch.length > 0) {
+      await targetCollection.insertMany(batch, { ordered: false })
     }
   }
 

@@ -22,7 +22,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   appEnviroment,
   enviromentLabels,
 }) => {
-  const { user } = useAuth()
+  const { token, user } = useAuth()
   const { config } = useConfig()
 
   const env =
@@ -44,7 +44,10 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     try {
       const res = await fetch(`${config.routes.api}/sync`, {
         body: JSON.stringify({ sourceEnv }),
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `JWT ${token}`,
+          'Content-Type': 'application/json',
+        },
         method: 'POST',
       })
       const data = await res.json()

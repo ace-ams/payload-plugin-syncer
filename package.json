@@ -14,11 +14,6 @@
       "import": "./src/exports/client.ts",
       "types": "./src/exports/client.ts",
       "default": "./src/exports/client.ts"
-    },
-    "./rsc": {
-      "import": "./src/exports/rsc.ts",
-      "types": "./src/exports/rsc.ts",
-      "default": "./src/exports/rsc.ts"
     }
   },
   "main": "./src/index.ts",
@@ -53,7 +48,6 @@
     "@payloadcms/eslint-config": "3.9.0",
     "@payloadcms/next": "3.37.0",
     "@payloadcms/richtext-lexical": "3.37.0",
-    "@payloadcms/ui": "3.37.0",
     "@playwright/test": "1.58.2",
     "@swc-node/register": "1.10.9",
     "@swc/cli": "0.6.0",
@@ -81,6 +75,8 @@
     "vitest": "4.0.18"
   },
   "peerDependencies": {
+    "@payloadcms/ui": ">=3.0.0",
+    "mongodb": ">=5.0.0",
     "payload": "^3.37.0"
   },
   "engines": {
@@ -99,11 +95,6 @@
         "import": "./dist/exports/client.js",
         "types": "./dist/exports/client.d.ts",
         "default": "./dist/exports/client.js"
-      },
-      "./rsc": {
-        "import": "./dist/exports/rsc.js",
-        "types": "./dist/exports/rsc.d.ts",
-        "default": "./dist/exports/rsc.js"
       }
     },
     "main": "./dist/index.js",
@@ -118,7 +109,6 @@
   },
   "registry": "https://registry.npmjs.org/",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1022.0",
-    "mongodb": "^7.1.1"
+    "@aws-sdk/client-s3": "^3.1022.0"
   }
 }

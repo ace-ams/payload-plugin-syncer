@@ -1,4 +1,4 @@
-import type { CollectionSlug } from 'payload'
+import type { CollectionSlug, PayloadRequest } from 'payload'
 
 export type Enviroments = 'acceptance' | 'development' | 'production'
 
@@ -24,6 +24,16 @@ export type AdminRole = {
 }
 
 export type EnviromentSyncingConfig = {
+  /**
+   * Custom access control function for the sync endpoint.
+   * Receives the full PayloadRequest and must return true to allow the sync.
+   * When provided, this replaces the default `adminRole` check.
+   *
+   * @example
+   * access: (req) => req.user?.role === 'superadmin'
+   */
+  access?: (req: PayloadRequest) => boolean | Promise<boolean>
+
   /**
    * Configure which field and value identifies an admin user.
    * Defaults to `{ field: 'role', value: 'admin' }`.
