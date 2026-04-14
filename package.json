@@ -1,6 +1,6 @@
 {
   "name": "@ace-ams/payload-syncer",
-  "version": "0.1.1",
+  "version": "0.0.1",
   "description": "A Payload CMS plugin to sync database content and S3 media across environments",
   "license": "MIT",
   "type": "module",
