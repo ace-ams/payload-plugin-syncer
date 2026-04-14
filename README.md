@@ -9,7 +9,7 @@ A sync button will appear in the admin dashboard for users that pass the access 
 ## Installation
 
 ```sh
-pnpm add @ace-ams/payload-syncer
+npm i @ace-ams/payload-syncer
 ```
 
 ---
